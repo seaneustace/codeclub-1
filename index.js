@@ -1,28 +1,62 @@
-export default {
-  fetch(request) {
-    // Respond with a sentence containg the request's method, otherwise respond that the request object doesn'r exist
-    if (request) {
-      return new Response(`This request used the ${request.method} method.`);
-    } else {
-      return new Response(`The request object does not exist`);
+//https://hello-worker-code-club.seanworker.workers.dev/
+
+async function readRequestBody(request) {
+  const { headers } = request;
+  const contentType = headers.get('content-type') || '';
+
+  if (contentType.includes('application/json')) {
+    return JSON.stringify(await request.json());
+  } else if (contentType.includes('application/text')) {
+    return request.text();
+  } else if (contentType.includes('text/html')) {
+    return request.text();
+  } else if (contentType.includes('form')) {
+    const formData = await request.formData();
+    const body = {};
+    for (const entry of formData.entries()) {
+      body[entry[0]] = entry[1];
     }
-    
-    /*
-    // Respond based on if the URL of the request matches what is hardcoded in the following code block.
-    if (request.url == "https://codeclub-1.willsmithee.workers.dev") {
-      return new Response("Hello worker!", {
-        headers: {
-          "content-type": "text/plain",
-        },
-      });
-    } else {
-      return new Response("Error Worker!", {
-        headers: {
-          "content-type": "text/plain",
-        },
-      });
-    }
-    */
-    
-  },
-};
+    return JSON.stringify(body);
+  } else {
+    // Perhaps some other type of data was submitted in the form
+    // like an image, or some other binary data.
+    return 'a POST';
+  }
+}
+
+async function handleRequest(request) {
+  const reqBody = await readRequestBody(request);
+  const retBody = `The request method was ${reqBody}`;
+  const json = JSON.stringify(retBody);
+  return new Response(json);
+}
+
+addEventListener('fetch', event => {
+  const { request } = event;
+  const { url } = request;
+
+  if (url.includes('form')) {
+    return event.respondWith(rawHtmlResponse(someForm));
+  }
+  if (request.method === 'POST') {
+    const json = JSON.stringify("The request method was a POST");
+    return event.respondWith(
+    new Response(json, {
+      headers: {
+        'content-type': 'application/json;charset=UTF-8',
+      },
+    })
+  );
+  } 
+  
+  else if (request.method === 'GET') {
+    const json = JSON.stringify("The request method was a GET");
+    return event.respondWith(
+    new Response(json, {
+      headers: {
+        'content-type': 'application/json;charset=UTF-8',
+      },
+    })
+  );
+  }
+});
